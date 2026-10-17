@@ -1,0 +1,21 @@
+name: AquaRoom
+options:
+  bundleIdPrefix: com.example
+targets:
+  AquaRoom:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources: [AquaRoom]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.AquaRoom
+        SWIFT_VERSION: "5.9"
+    info:
+      path: AquaRoom/Info.plist
+      properties:
+        UILaunchScreen: {}
+        CFBundleDisplayName: AquaRoom
+        NSLocalNetworkUsageDescription: 近くの人と匿名でチャットするためにローカルネットワークを使用します。
+        NSBluetoothAlwaysUsageDescription: 近くの人を見つけるためにBluetoothを使用します。
+        NSBonjourServices: ["_aquaroom._tcp", "_aquaroom._udp"]

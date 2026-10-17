@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#022a4d">
+<title>AquaRoom</title>
+<style>
+:root { --bg1:#03386b; --bg2:#020d24; --fg:#eaf6ff; --mut:#9db8d0; --card:rgba(255,255,255,.1); --acc:#38d0f0; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { font: 15px/1.5 system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; color: var(--fg);
+  background: linear-gradient(var(--bg1), var(--bg2)); display: flex; flex-direction: column; overflow: hidden;
+  padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; }
+header b { font-size: 18px; }
+button { font: inherit; color: inherit; border: 0; border-radius: 10px; padding: 8px 14px; background: var(--card); cursor: pointer; }
+button.pri { background: var(--acc); color: #002; font-weight: 600; }
+input, select { font: inherit; color: inherit; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+  border-radius: 10px; padding: 9px 12px; width: 100%; }
+select option { color: #000; }
+main { flex: 1; position: relative; min-height: 0; }
+#tank { position: absolute; inset: 0; overflow: hidden; }
+.empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--mut); white-space: pre-line; }
+.fish { position: absolute; background: none; padding: 4px; text-align: center; max-width: 120px; }
+.fish .body { display: block; transform: scaleX(-1); animation: swim var(--d,3s) ease-in-out infinite alternate; }
+.fish .label { display: block; font-size: 12px; background: color-mix(in srgb, var(--c) 35%, transparent); border-radius: 99px; padding: 1px 8px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fish small { color: var(--mut); font-size: 10px; }
+@keyframes swim { from { transform: scaleX(-1) translate(-10px, 5px); } to { transform: scaleX(-1) translate(10px, -6px); } }
+nav { display: flex; border-top: 1px solid rgba(255,255,255,.15); background: rgba(0,0,0,.3); }
+nav button { flex: 1; border-radius: 0; background: none; padding: 12px; color: var(--mut); }
+nav button.on { color: var(--acc); }
+.page { display: none; position: absolute; inset: 0; overflow: auto; padding: 14px; }
+.page.on { display: block; }
+.card { background: var(--card); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+.card small { color: var(--mut); }
+.overlay { position: fixed; inset: 0; z-index: 10; display: none; flex-direction: column; background: linear-gradient(var(--bg1), var(--bg2));
+  padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+.overlay.on { display: flex; }
+.bar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; background: rgba(0,0,0,.3); }
+.bar .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+#msgs { flex: 1; overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.m { max-width: 80%; } .m small { color: var(--mut); font-size: 11px; display: block; }
+.m span { display: inline-block; padding: 8px 12px; border-radius: 14px; background: rgba(255,255,255,.18); white-space: pre-wrap; overflow-wrap: anywhere; }
+.m.me { align-self: flex-end; text-align: right; } .m.me span { background: rgba(56,208,240,.6); color: #001; }
+.row { display: flex; gap: 8px; padding: 10px 12px; }
+.stack { display: grid; gap: 10px; max-width: 420px; margin: auto; padding: 24px; }
+#toast { position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%); background: #000c; padding: 8px 14px; border-radius: 99px; display: none; z-index: 30; }
+</style>
+</head>
+<body>
+<header><b>🐟 AquaRoom</b><span>近く <b id="peers">0</b>人 <button class="pri" id="new">＋</button></span></header>
+<main>
+  <section id="p-tank" class="page on" style="padding:0"><div id="tank"></div></section>
+  <section id="p-ads" class="page">
+    <div class="card"><b>広告を配信</b>（1時間表示）
+      <div class="stack" style="padding:8px 0 0;margin:0;max-width:none">
+        <input id="ad-t" maxlength="40" placeholder="タイトル（例：カフェオープン！）">
+        <input id="ad-b" maxlength="200" placeholder="内容">
+        <button class="pri" id="ad-go">配信</button></div></div>
+    <div id="ads"></div>
+  </section>
+</main>
+<nav><button class="on" data-p="tank">🌊 水槽</button><button data-p="ads">📣 広告</button></nav>
+
+<div id="join" class="overlay on"><div class="stack">
+  <h1 style="margin:0">🐟 AquaRoom</h1>
+  <p style="margin:0;color:var(--mut)">近くの人と匿名で話せる、15分で消える水槽。</p>
+  <button class="pri" id="geo">📍 近くの水槽に入る（位置情報）</button>
+  <small style="color:var(--mut)">位置は約100m単位に丸めてから送信します。正確な位置はサーバーに送られません。</small>
+  <input id="code" placeholder="または合言葉（友達と同じ言葉を入力）">
+  <button id="code-go">合言葉で入る</button>
+</div></div>
+
+<div id="thread" class="overlay">
+  <div class="bar"><button id="back">←</button><span class="t" id="th-t"></span><span id="th-time"></span><button id="vote"></button></div>
+  <div id="msgs"></div>
+  <div class="row"><input id="text" maxlength="500" placeholder="メッセージ" autocomplete="off"><button class="pri" id="send">送信</button></div>
+</div>
+
+<div id="new-sheet" class="overlay"><div class="stack">
+  <h2 style="margin:0">魚を放つ</h2>
+  <input id="n-title" maxlength="40" placeholder="話題（例：あの駅、もう見た？）">
+  <select id="n-cat"></select>
+  <small style="color:var(--mut)">スレッドは15分で自動的に消えます。</small>
+  <button class="pri" id="n-go">作成</button><button id="n-cancel">閉じる</button>
+</div></div>
+<div id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const CATS = ['雑談', 'グルメ', 'イベント', '相談'];
+const COLORS = { '雑談': '#38d0f0', 'グルメ': '#ffa940', 'イベント': '#ff6fa8', '相談': '#5ee08a' };
+const myId = crypto.randomUUID();
+const myName = ['ウミガメ', 'クラゲ', 'イルカ', 'ペンギン', 'タコ', 'ラッコ'][Math.floor(Math.random() * 6)] + (100 + Math.floor(Math.random() * 900));
+const state = { threads: new Map(), messages: new Map(), ads: [], peers: 0, open: null };
+let area = null, skew = 0;
+
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (k === 'class') el.className = v;
+    else el.setAttribute(k, v);
+  }
+  el.append(...kids);
+  return el;
+}
+const now = () => Date.now() + skew;
+const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+function toast(t) { const e = $('#toast'); e.textContent = t; e.style.display = 'block'; setTimeout(() => (e.style.display = 'none'), 2500); }
+
+function join(key) {
+  area = key;
+  $('#join').classList.remove('on');
+  const es = new EventSource('/events?area=' + encodeURIComponent(key) + '&id=' + myId);
+  es.onmessage = (e) => handle(JSON.parse(e.data));
+  es.onerror = () => toast('再接続中…');
+}
+function post(pkt) {
+  fetch('/send?area=' + encodeURIComponent(area) + '&id=' + myId, { method: 'POST', body: JSON.stringify(pkt) })
+    .then((r) => { if (r.status === 429) toast('送信が速すぎます'); });
+}
+function addMsg(m) {
+  const l = state.messages.get(m.threadId) || [];
+  if (!l.some((x) => x.id === m.id)) { l.push(m); l.sort((a, b) => a.date - b.date); state.messages.set(m.threadId, l); }
+}
+function handle(m) {
+  if (m.type === 'sync') {
+    skew = m.now - Date.now();
+    state.threads = new Map(m.threads.map((t) => [t.id, t]));
+    state.messages = new Map(); m.messages.forEach(addMsg); state.ads = m.ads;
+  } else if (m.type === 'thread') state.threads.set(m.thread.id, m.thread);
+  else if (m.type === 'message') addMsg(m.message);
+  else if (m.type === 'expire') m.ids.forEach((id) => { state.threads.delete(id); state.messages.delete(id); });
+  else if (m.type === 'ad') state.ads.push(m.ad);
+  else if (m.type === 'ads') state.ads = m.ads;
+  else if (m.type === 'peers') state.peers = m.count;
+  render();
+}
+
+function render() {
+  $('#peers').textContent = state.peers;
+  const tank = $('#tank'); tank.replaceChildren();
+  if (!state.threads.size) tank.append(h('div', { class: 'empty' }, 'まだ誰もいません 🫧\n右上の＋で魚を放とう'));
+  for (const t of state.threads.values()) {
+    const x = parseInt(t.id.slice(0, 2), 16) / 255, y = parseInt(t.id.slice(2, 4), 16) / 255;
+    const f = h('button', { class: 'fish', 'data-exp': t.expiresAt,
+      style: `left:${6 + x * 70}%;top:${4 + y * 78}%;--c:${COLORS[t.category] || '#38d0f0'};--d:${2 + x * 2}s`,
+      onclick: () => openThread(t.id) },
+      h('span', { class: 'body', style: `font-size:${28 + Math.min(t.participants, 10) * 5}px` }, '🐟'),
+      h('span', { class: 'label' }, t.title), h('small', {}, t.category + '・' + t.participants + '人'));
+    tank.append(f);
+  }
+  const ads = $('#ads'); ads.replaceChildren();
+  if (!state.ads.length) ads.append(h('p', { class: 'card' }, '近くに広告はありません'));
+  state.ads.forEach((a) => ads.append(h('div', { class: 'card' }, h('b', {}, a.title), h('div', {}, a.body),
+    h('small', {}, 'あと' + Math.max(0, Math.floor((a.expiresAt - now()) / 60000)) + '分'))));
+  if (state.open) renderThread();
+}
+
+function openThread(id) { state.open = id; $('#thread').classList.add('on'); renderThread(); }
+function renderThread() {
+  const t = state.threads.get(state.open);
+  if (!t) { state.open = null; $('#thread').classList.remove('on'); toast('このスレッドは消えました 🫧'); return; }
+  $('#th-t').textContent = t.title;
+  $('#vote').textContent = '⏳ 延長 ' + t.votes + '/' + t.need;
+  const box = $('#msgs'); box.replaceChildren();
+  for (const m of state.messages.get(t.id) || []) {
+    box.append(h('div', { class: 'm' + (m.senderId === myId ? ' me' : '') }, h('small', {}, m.senderName), h('span', {}, m.text)));
+  }
+  box.scrollTop = box.scrollHeight;
+  tick();
+}
+function tick() {
+  const t = state.threads.get(state.open);
+  if (t) $('#th-time').textContent = '⌛ ' + fmt(t.expiresAt - now());
+  document.querySelectorAll('.fish').forEach((f) => {
+    f.style.opacity = Math.max(0.4, Math.min(1, (f.dataset.exp - now()) / 180000));
+  });
+}
+setInterval(tick, 1000);
+
+$('#geo').onclick = () => {
+  if (!navigator.geolocation) return toast('位置情報が使えません。合言葉で入ってください');
+  navigator.geolocation.getCurrentPosition(
+    (p) => join('geo:' + p.coords.latitude.toFixed(3) + ',' + p.coords.longitude.toFixed(3)),
+    () => toast('位置情報を取得できませんでした。合言葉で入ってください'), { timeout: 10000 });
+};
+$('#code-go').onclick = () => { const c = $('#code').value.trim(); if (c) join('code:' + c.toLowerCase()); };
+$('#back').onclick = () => { state.open = null; $('#thread').classList.remove('on'); };
+$('#vote').onclick = () => post({ type: 'vote', threadId: state.open });
+const sendMsg = () => { const v = $('#text').value.trim(); if (v) { post({ type: 'message', threadId: state.open, text: v, name: myName }); $('#text').value = ''; } };
+$('#send').onclick = sendMsg;
+$('#text').onkeydown = (e) => { if (e.key === 'Enter' && !e.isComposing) sendMsg(); };
+CATS.forEach((c) => $('#n-cat').append(h('option', { value: c }, c)));
+$('#new').onclick = () => $('#new-sheet').classList.add('on');
+$('#n-cancel').onclick = () => $('#new-sheet').classList.remove('on');
+$('#n-go').onclick = () => {
+  const t = $('#n-title').value.trim(); if (!t) return;
+  post({ type: 'thread', title: t, category: $('#n-cat').value });
+  $('#n-title').value = ''; $('#new-sheet').classList.remove('on');
+};
+$('#ad-go').onclick = () => {
+  const t = $('#ad-t').value.trim(); if (!t) return;
+  post({ type: 'ad', title: t, body: $('#ad-b').value.trim() }); $('#ad-t').value = ''; $('#ad-b').value = '';
+};
+document.querySelectorAll('nav button').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.page').forEach((p) => p.classList.toggle('on', p.id === 'p-' + b.dataset.p));
+});
+</script>
+</body>
+</html>
